@@ -1,4 +1,7 @@
 # Go workspace file
 go.work
 
-# Local History for Visual Studio Code
+# DB Storage
+# storage
+
+.gitignore
