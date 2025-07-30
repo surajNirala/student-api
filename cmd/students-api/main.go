@@ -12,35 +12,60 @@ import (
 	"time"
 
 	"github.com/surajNirala/student-api/internal/config"
-	"github.com/surajNirala/student-api/internal/http/handlers/student"
+	"github.com/surajNirala/student-api/internal/storage"
+	"github.com/surajNirala/student-api/routes"
+
+	// "gorm.io/driver/mysql"
+	"github.com/surajNirala/student-api/internal/storage/mysql"
 	"github.com/surajNirala/student-api/internal/storage/sqlite"
 )
 
 func main() {
 	// Load Config
 	cfg := config.MustLoad()
-	// Database Setup
-	storage, err := sqlite.New(cfg)
-	if err != nil {
-		log.Fatal(err)
+	var storage storage.Storage
+	var err error
+	// Decide storage based on config
+	if cfg.MySQL != nil {
+		storage, err = mysql.MysqlConnect(cfg)
+		if err != nil {
+			log.Fatal("MySQL connection error:", err)
+		}
+	} else if cfg.StoragePath != "" {
+		storage, err = sqlite.New(cfg)
+		if err != nil {
+			log.Fatal("SQLite connection error:", err)
+		}
+	} else {
+		log.Fatal("No valid database configuration found")
 	}
+	// Database Setup
+	// storage, err := sqlite.New(cfg)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// slog.Info("Storage Intilized", slog.String("env", cfg.Env), slog.String("Version", "1.0.0"))
+	// cfg := config.MustLoadMySQL()
+
+	// // Database Setup
+	// storage, err := mysql.MysqlConnect(cfg)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 	slog.Info("Storage Intilized", slog.String("env", cfg.Env), slog.String("Version", "1.0.0"))
+
 	// Setup Router
 	router := http.NewServeMux()
-	router.HandleFunc("GET /api/students", student.List(storage))
-	router.HandleFunc("POST /api/students", student.Create(storage))
-	router.HandleFunc("GET /api/students/{id}", student.GetByID(storage))
-	router.HandleFunc("PUT /api/students/{id}", student.UpdateByID(storage))
-	router.HandleFunc("DELETE /api/students/{id}", student.DeleteByID(storage))
+	routes.RouteLoad(router, storage)
 	// Setup Server
 	server := http.Server{
-		Addr:    cfg.Addr,
+		Addr:    cfg.HTTPServer.Addr,
 		Handler: router,
 	}
 
 	//Gressfully shut down server
-	slog.Info("Server Started", slog.String("address", cfg.Addr))
-	fmt.Printf("Server Started %s", cfg.Addr)
+	slog.Info("Server Started", slog.String("address", cfg.HTTPServer.Addr))
+	fmt.Printf("Server Started %s", cfg.HTTPServer.Addr)
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {

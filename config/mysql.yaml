@@ -1,0 +1,10 @@
+env: "dev"
+mysql:
+  host: "127.0.0.1"
+  port: 3307
+  user: "root"
+  password: "root"
+  dbname: "student_api"
+http_server:
+  address: "localhost:9090"
+  # timeout
