@@ -5,16 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/surajNirala/student-api/internal/models"
+	"github.com/surajNirala/student-api/internal/storage"
 	"github.com/surajNirala/student-api/internal/utils/response"
 )
 
-func Create() http.HandlerFunc {
+func List(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		list, err := storage.StudentList()
+		// fmt.Println("list", list)
+		// slog.Info("err : ", err.Error())
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+		}
+		response.WriteJson(w, http.StatusOK, list)
+	}
+}
 
+func Create(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var student models.Student
 		err := json.NewDecoder(r.Body).Decode(&student)
@@ -33,10 +45,93 @@ func Create() http.HandlerFunc {
 			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validatorErr))
 			return
 		}
-		data := make(map[string]string)
+		lastID, err := storage.CreateStudent(student.Name, student.Email, student.Age)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+		}
+
+		data := make(map[string]any)
 		data["Success"] = "OK"
+		data["Code"] = 201
+		data["id"] = lastID
 		response.WriteJson(w, http.StatusCreated, data)
-		slog.Info("Creating a student")
-		w.Write([]byte("Welcome the student new style"))
+	}
+}
+
+func GetByID(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, err)
+			return
+		}
+		student, err := storage.GetStudentByID(id)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		response.WriteJson(w, http.StatusOK, student)
+	}
+}
+
+func UpdateByID(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var studentupdate models.Student
+		idStr := r.PathValue("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, err)
+			return
+		}
+		err = json.NewDecoder(r.Body).Decode(&studentupdate)
+		if errors.Is(err, io.EOF) {
+			customMsg := fmt.Errorf("empty body")
+			response.WriteJson(w, http.StatusBadRequest, response.GenerateError(customMsg))
+			return
+		}
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GenerateError(err))
+			return
+		}
+		// Request Validation
+		if err := validator.New().Struct(studentupdate); err != nil {
+			validatorErr := err.(validator.ValidationErrors)
+			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validatorErr))
+			return
+		}
+		_, err = storage.GetStudentByID(id)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		message, err := storage.UpdateStudentByID(studentupdate.Name, studentupdate.Email, studentupdate.Age, id)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+		}
+
+		data := make(map[string]any)
+		data["Success"] = "OK"
+		data["Code"] = 200
+		data["id"] = id
+		data["message"] = message
+		response.WriteJson(w, http.StatusOK, data)
+	}
+}
+
+func DeleteByID(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, err)
+			return
+		}
+		student, err := storage.DeleteStudentByID(id)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		response.WriteJson(w, http.StatusOK, student)
 	}
 }
