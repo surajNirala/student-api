@@ -135,3 +135,57 @@ func DeleteByID(storage storage.Storage) http.HandlerFunc {
 		response.WriteJson(w, http.StatusOK, student)
 	}
 }
+
+func FileUpload10MB(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GenerateError(err))
+			return
+		}
+		defer file.Close()
+
+		if header.Size > 10*1024*1024 { // 10 MB limit
+			fmt.Println("Bad Request: File size exceeds limit", header.Size)
+			response.WriteJson(w, http.StatusBadRequest, response.GenerateError(fmt.Errorf("file size exceeds limit")))
+			return
+		}
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		result, err := storage.StudentFileUpload10MB(header.Filename, fileBytes)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		data := make(map[string]any)
+		data["Success"] = result
+		data["Code"] = 200
+		response.WriteJson(w, http.StatusOK, data)
+	}
+}
+
+func LargeFileUpload(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GenerateError(err))
+			return
+		}
+		defer file.Close()
+
+		result, err := storage.StudentLargeFileUpload(header.Filename, file)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		data := make(map[string]any)
+		data["Success"] = result
+		data["Code"] = 200
+		response.WriteJson(w, http.StatusOK, data)
+	}
+}

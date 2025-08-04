@@ -3,6 +3,9 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/surajNirala/student-api/internal/config"
 	"github.com/surajNirala/student-api/internal/models"
@@ -132,4 +135,46 @@ func (s *Sqlite) UpdateStudentByID(name string, email string, age int, id int64)
 	}
 
 	return fmt.Sprintf("student with id %d updated successfully", id), nil
+}
+
+func (s *Sqlite) StudentFileUpload10MB(fileName string, fileData []byte) (string, error) {
+	uploadDir := "uploads"
+	// Ensure the upload directory exists
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return "", err
+	}
+	filePath := filepath.Join(uploadDir, fileName)
+	file, err := os.Create(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	_, err = file.Write(fileData)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("File %s uploaded successfully", fileName), nil
+}
+
+func (s *Sqlite) StudentLargeFileUpload(fileName string, fileReader io.Reader) (string, error) {
+	uploadDir := "uploads"
+	// Ensure the upload directory exists
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return "", err
+	}
+	filePath := filepath.Join(uploadDir, fileName)
+	dstFile, err := os.Create(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, fileReader)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Large File %s uploaded successfully", fileName), nil
 }

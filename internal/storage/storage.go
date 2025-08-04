@@ -1,6 +1,10 @@
 package storage
 
-import "github.com/surajNirala/student-api/internal/models"
+import (
+	"io"
+
+	"github.com/surajNirala/student-api/internal/models"
+)
 
 type Storage interface {
 	StudentList() ([]models.Student, error)
@@ -8,4 +12,6 @@ type Storage interface {
 	GetStudentByID(id int64) (models.Student, error)
 	UpdateStudentByID(name string, email string, age int, id int64) (string, error)
 	DeleteStudentByID(id int64) (string, error)
+	StudentFileUpload10MB(fileName string, fileData []byte) (string, error)
+	StudentLargeFileUpload(fileName string, fileData io.Reader) (string, error)
 }

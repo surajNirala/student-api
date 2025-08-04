@@ -15,4 +15,7 @@ func RouteLoad(router *http.ServeMux, storage storage.Storage) {
 	router.HandleFunc("DELETE /api/students/{id}", student.DeleteByID(storage))
 
 	router.HandleFunc("GET /api/students1", student.List(storage))
+
+	router.HandleFunc("POST /api/students/file-upload", student.FileUpload10MB(storage))
+	router.HandleFunc("POST /api/students/large-file-upload", student.LargeFileUpload(storage))
 }
