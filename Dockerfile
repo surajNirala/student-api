@@ -14,11 +14,12 @@ RUN go mod download
 COPY . .
 
 # Build binary
-RUN go build -o server ./cmd/students-api/main.go
+# RUN CGO_ENABLED=0  go build -o server ./cmd/students-api/main.go
+RUN CGO_ENABLED=0  go build -ldflags="-s -w" -o server ./cmd/students-api/main.go
 
 
 # ---------- Stage 2: Run ----------
-FROM alpine:3.19
+FROM scratch
 
 WORKDIR /app
 
